@@ -23,19 +23,30 @@ class FeatureExtractor:
         self.last = None
 
     def extract(self, img: MatLike):
-        # feature detection and extraction
+        # feature detection and extraction using ORB
         kps, des = self.orb.detectAndCompute(img, None)
 
-        # feature matching
+        # feature matching with lowe's ratio test
         ret = []
         if self.last is not None:
             matches = self.bf.knnMatch(des, self.last["des"], k=2)
             for m, n in matches:
                 if m.distance < 0.75 * n.distance:
-                    ret.append((kps[m.queryIdx], self.last["kps"][m.trainIdx]))
+                    pt1 = kps[m.queryIdx].pt
+                    pt2 = self.last["kps"][m.trainIdx].pt
+                    ret.append((pt1, pt2))
 
+        ret = np.array(ret)
+
+        if len(ret) > 0:
+            F, mask = cv2.findFundamentalMat(
+                ret[:, 0, :],
+                ret[:, 1, :],
+                cv2.FM_RANSAC,
+            )
+            mask = mask.ravel()
+            ret = ret[mask == 1]
         self.last = {"kps": kps, "des": des}
-        print(f"Matches {len(ret)}")
 
         return ret
 
@@ -47,9 +58,9 @@ def process_frame(img: MatLike):
     img = cv2.resize(img, (W, H))
     matches = fe.extract(img)
 
-    for kp1, kp2 in matches:
-        u1, v1 = map(lambda x: int(round(x)), kp1.pt)
-        u2, v2 = map(lambda x: int(round(x)), kp2.pt)
+    for pt1, pt2 in matches:
+        u1, v1 = map(lambda x: int(round(x)), pt1)
+        u2, v2 = map(lambda x: int(round(x)), pt2)
 
         img = cv2.circle(img, (u1, v1), color=(0, 255, 0), radius=3)
         img = cv2.line(img, (u1, v1), (u2, v2), color=(255, 0, 0))
