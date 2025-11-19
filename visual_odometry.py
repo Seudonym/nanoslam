@@ -11,6 +11,10 @@ class VisualOdometry:
         self.Kinv = np.linalg.inv(K)
         self.last = None
 
+        self.cur_t = np.zeros((3, 1))
+        self.cur_R = np.eye(3)
+        self.path = []
+
     def extract(self, img: MatLike) -> tuple[np.ndarray, np.ndarray | None]:
         # feature detection and extraction using ORB
         kps, des = self.orb.detectAndCompute(img, None)
@@ -32,6 +36,10 @@ class VisualOdometry:
             E, mask = cv2.findEssentialMat(ret[:, 0], ret[:, 1], self.K, cv2.RANSAC)
             ret = ret[mask.ravel() == 1]
             _, R, t, _ = cv2.recoverPose(E, ret[:, 0], ret[:, 1], self.K)
+
+            self.cur_t = self.cur_t + self.cur_R @ t
+            self.cur_R = R @ self.cur_R
+            self.path.append(self.cur_t.ravel().tolist())
 
             # filter ransac inliers
             pose = np.concatenate([R, t], axis=1)

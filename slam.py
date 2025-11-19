@@ -6,6 +6,7 @@ import cv2
 from cv2.typing import MatLike
 import numpy as np
 from visual_odometry import VisualOdometry
+import matplotlib.pyplot as plt
 
 
 def paint(display: pygame.Surface, img: MatLike):
@@ -18,6 +19,14 @@ def paint(display: pygame.Surface, img: MatLike):
 def process_frame(vo: VisualOdometry, img: MatLike):
     img = cv2.resize(img, (W, H))
     matches, pose = vo.extract(img)
+    path = np.array(vo.path)
+
+    if not path.shape[0] < 2:
+        plt.clf()
+        plt.plot(path[:, 0], -path[:, 2], "-b")
+        plt.plot(path[-1, 0], -path[-1, 2], "or")
+        plt.axis("equal")
+        plt.pause(0.001)
 
     for pt1, pt2 in matches:
         u1, v1 = map(lambda x: int(round(x)), pt1[0:2])
