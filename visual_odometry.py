@@ -32,10 +32,17 @@ class VisualOdometry:
 
         pose = None
         if len(ret) > 0:
+            # minimum motion check
+            diff = ret[:, 0] - ret[:, 1]
+            avg_distance = np.mean(np.linalg.norm(diff, axis=1))
+            if avg_distance < 2.0:
+                return ret, pose
+
             # estimate the essential matrix using RANSAC
             E, mask = cv2.findEssentialMat(ret[:, 0], ret[:, 1], self.K, cv2.RANSAC)
             ret = ret[mask.ravel() == 1]
             _, R, t, _ = cv2.recoverPose(E, ret[:, 0], ret[:, 1], self.K)
+            # print(E)
 
             self.cur_t = self.cur_t + self.cur_R @ t
             self.cur_R = R @ self.cur_R
@@ -43,7 +50,6 @@ class VisualOdometry:
 
             # filter ransac inliers
             pose = np.concatenate([R, t], axis=1)
-            print(t.ravel())
 
         self.last = {"kps": kps, "des": des}
         return ret, pose

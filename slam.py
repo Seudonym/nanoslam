@@ -25,6 +25,7 @@ def process_frame(vo: VisualOdometry, img: MatLike):
         plt.clf()
         plt.plot(path[:, 0], -path[:, 2], "-b")
         plt.plot(path[-1, 0], -path[-1, 2], "or")
+        plt.grid()
         plt.axis("equal")
         plt.pause(0.001)
 
@@ -46,7 +47,7 @@ def process_frame(vo: VisualOdometry, img: MatLike):
 if __name__ == "__main__":
     pygame.init()
     clock = pygame.time.Clock()
-    video_file = "0000.mp4"
+    video_file = "nfsmw.mp4"
 
     cap = cv2.VideoCapture(video_file)
     ret, frame = cap.read()
