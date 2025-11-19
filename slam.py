@@ -5,6 +5,7 @@ import time
 import cv2
 from cv2.typing import MatLike
 import numpy as np
+from visual_odometry import VisualOdometry
 
 
 def paint(display: pygame.Surface, img: MatLike):
@@ -14,73 +15,9 @@ def paint(display: pygame.Surface, img: MatLike):
     display.blit(surface, (0, 0))
 
 
-def extractRt(E):
-    W = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]], dtype=float)
-    U, d, Vt = np.linalg.svd(E)
-    print(d)
-    assert np.linalg.det(U) > 0
-    if np.linalg.det(Vt) < 0:
-        Vt *= -1.0
-    R = np.dot(np.dot(U, W), Vt)
-    if np.sum(R.diagonal()) < 0:
-        R = np.dot(np.dot(U, W.T), Vt)
-    t = U[:, 2]
-    Rt = np.concatenate([R, t.reshape(3, 1)], axis=1)
-    return Rt
-
-
-class FeatureExtractor:
-    def __init__(self, K: np.ndarray):
-        self.orb = cv2.ORB.create(nfeatures=5000)
-        self.bf = cv2.BFMatcher.create(normType=cv2.NORM_HAMMING)
-        self.K = K
-        self.Kinv = np.linalg.inv(K)
-        self.last = None
-
-    def extract(self, img: MatLike):
-        # feature detection and extraction using ORB
-        kps, des = self.orb.detectAndCompute(img, None)
-
-        # feature matching with lowe's ratio test
-        ret = []
-        if self.last is not None:
-            matches = self.bf.knnMatch(des, self.last["des"], k=2)
-            for m, n in matches:
-                if m.distance < 0.75 * n.distance:
-                    pt1 = self.last["kps"][m.trainIdx].pt
-                    pt2 = kps[m.queryIdx].pt
-                    ret.append((pt1, pt2))
-        ret = np.array(ret)
-
-        pose = None
-        if len(ret) > 0:
-            # was using for estimating E manually
-            # ret[:, 0, :] = (
-            #     self.Kinv
-            #     @ np.concat([ret[:, 0, :], np.ones((ret.shape[0], 1))], axis=-1).T
-            # ).T[:, 0:2]
-            #
-            # ret[:, 1, :] = (
-            #     self.Kinv
-            #     @ np.concat([ret[:, 1, :], np.ones((ret.shape[0], 1))], axis=-1).T
-            # ).T[:, 0:2]
-
-            # estimate the essential matrix using RANSAC
-            E, mask = cv2.findEssentialMat(ret[:, 0], ret[:, 1], K, cv2.RANSAC)
-            _, R, t, _ = cv2.recoverPose(E, ret[:, 0], ret[:, 1], self.K)
-
-            # filter ransac inliers
-            ret = ret[mask.ravel() == 1]
-            pose = np.concatenate([R, t], axis=1)
-
-        self.last = {"kps": kps, "des": des}
-        return ret, pose
-
-
-def process_frame(fe: FeatureExtractor, img: MatLike):
+def process_frame(vo: VisualOdometry, img: MatLike):
     img = cv2.resize(img, (W, H))
-    print(img.shape)
-    matches, pose = fe.extract(img)
+    matches, pose = vo.extract(img)
 
     for pt1, pt2 in matches:
         # pt1 = fe.K @ np.array([pt1[0], pt1[1], 1.0])
@@ -119,7 +56,7 @@ if __name__ == "__main__":
             [0, 0, 1],
         ]
     )
-    fe = FeatureExtractor(K)
+    vo = VisualOdometry(K)
 
     cap = cv2.VideoCapture(video_file)
     display = pygame.display.set_mode((W, H))
@@ -134,9 +71,9 @@ if __name__ == "__main__":
             if not ret:
                 break
 
-            frame = process_frame(fe, frame)
+            frame = process_frame(vo, frame)
             paint(display, frame)
             pygame.display.flip()
-            clock.tick(1)
+            clock.tick(10)
 
     pygame.quit()
