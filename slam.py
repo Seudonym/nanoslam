@@ -20,10 +20,6 @@ def process_frame(vo: VisualOdometry, img: MatLike):
     matches, pose = vo.extract(img)
 
     for pt1, pt2 in matches:
-        # pt1 = fe.K @ np.array([pt1[0], pt1[1], 1.0])
-        # pt2 = fe.K @ np.array([pt2[0], pt2[1], 1.0])
-        # was using for esimating E manually
-
         u1, v1 = map(lambda x: int(round(x)), pt1[0:2])
         u2, v2 = map(lambda x: int(round(x)), pt2[0:2])
 
@@ -48,7 +44,7 @@ if __name__ == "__main__":
     H, W, _ = frame.shape
     cap.release()
 
-    F = 280
+    F = 610
     K = np.array(
         [
             [F, 0, W // 2],

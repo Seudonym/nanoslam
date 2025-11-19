@@ -28,23 +28,12 @@ class VisualOdometry:
 
         pose = None
         if len(ret) > 0:
-            # was using for estimating E manually
-            # ret[:, 0, :] = (
-            #     self.Kinv
-            #     @ np.concat([ret[:, 0, :], np.ones((ret.shape[0], 1))], axis=-1).T
-            # ).T[:, 0:2]
-            #
-            # ret[:, 1, :] = (
-            #     self.Kinv
-            #     @ np.concat([ret[:, 1, :], np.ones((ret.shape[0], 1))], axis=-1).T
-            # ).T[:, 0:2]
-
             # estimate the essential matrix using RANSAC
             E, mask = cv2.findEssentialMat(ret[:, 0], ret[:, 1], self.K, cv2.RANSAC)
+            ret = ret[mask.ravel() == 1]
             _, R, t, _ = cv2.recoverPose(E, ret[:, 0], ret[:, 1], self.K)
 
             # filter ransac inliers
-            ret = ret[mask.ravel() == 1]
             pose = np.concatenate([R, t], axis=1)
             print(t.ravel())
 
