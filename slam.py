@@ -7,10 +7,11 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import cv2
 from cv2.typing import MatLike
 import numpy as np
-import matplotlib.pyplot as plt
 import pygame
 
-from frame import Frame, match_frames, extract
+from frame import Frame, Point, Map, match_frames, extract
+
+map3d = Map()
 
 
 def paint(display: pygame.Surface, img: MatLike):
@@ -20,15 +21,11 @@ def paint(display: pygame.Surface, img: MatLike):
     display.blit(surface, (0, 0))
 
 
-frames = []
-
-
 def process_frame(img: MatLike):
-    global frames
     img = cv2.resize(img, (W, H))
-    frame = Frame(img, K)
-    frames.append(frame)
+    frame = Frame(map3d, img, K)
 
+    frames = map3d.frames
     if len(frames) < 2:
         return img
 
@@ -39,8 +36,8 @@ def process_frame(img: MatLike):
     pts2 = np.array([kp.pt for kp in frames[-2].kps])[idxs2]
 
     pts4d = cv2.triangulatePoints(
-        np.eye(4)[:3],
-        Rt[:3],
+        frames[-1].pose[:3],
+        frames[-2].pose[:3],
         pts1.T,
         pts2.T,
     ).T
@@ -49,6 +46,11 @@ def process_frame(img: MatLike):
     filter = pts4d[:, 2] > 0
     pts4d = pts4d[filter]
     pts4d /= pts4d[:, 3:]
+
+    for i, pt in enumerate(pts4d):
+        p = Point(map3d, pt)
+        p.add_observation(frames[-1], idxs1[i])
+        p.add_observation(frames[-2], idxs2[i])
 
     for pt1, pt2 in zip(pts1, pts2):
         u1, v1 = map(lambda x: int(round(x)), pt1)
@@ -102,6 +104,6 @@ if __name__ == "__main__":
             img = process_frame(img)
             paint(display, img)
             pygame.display.flip()
-            clock.tick(10)
+            clock.tick(2)
 
     pygame.quit()

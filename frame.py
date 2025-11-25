@@ -9,12 +9,33 @@ def extract(img: MatLike):
     return kps, des
 
 
+class Map:
+    def __init__(self):
+        self.frames: list[Frame] = []
+        self.points: list[Point] = []
+
+
 class Frame:
-    def __init__(self, img: MatLike, K: np.ndarray):
+    def __init__(self, map: Map, img: MatLike, K: np.ndarray):
         self.kps, self.des = extract(img)
         self.pose = np.eye(4)
         self.K = K
         self.Kinv = np.linalg.inv(K)
+        self.id = len(map.frames)
+        map.frames.append(self)
+
+
+class Point:
+    def __init__(self, map: Map, location):
+        self.location = location
+        self.frames = []
+        self.idxs = []
+        self.id = len(map.points)
+        map.points.append(self)
+
+    def add_observation(self, frame: Frame, idx):
+        self.frames.append(frame)
+        self.idxs.append(idx)
 
 
 def match_frames(frame1: Frame, frame2: Frame):
