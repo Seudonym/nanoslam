@@ -32,12 +32,27 @@ def process_frame(img: MatLike):
     if len(frames) < 2:
         return img
 
-    matches, Rt = match_frames(frames[-2], frames[-1])
-    print(Rt[:3, 3].ravel())
+    idxs1, idxs2, Rt = match_frames(frames[-1], frames[-2])
+    frames[-1].pose = Rt @ frames[-2].pose
 
-    for match in matches:
-        u1, v1 = map(lambda x: int(round(x)), match[0][0:2])
-        u2, v2 = map(lambda x: int(round(x)), match[1][0:2])
+    pts1 = np.array([kp.pt for kp in frames[-1].kps])[idxs1]
+    pts2 = np.array([kp.pt for kp in frames[-2].kps])[idxs2]
+
+    pts4d = cv2.triangulatePoints(
+        np.eye(4)[:3],
+        Rt[:3],
+        pts1.T,
+        pts2.T,
+    ).T
+
+    # reject points behind the camera
+    filter = pts4d[:, 2] > 0
+    pts4d = pts4d[filter]
+    pts4d /= pts4d[:, 3:]
+
+    for pt1, pt2 in zip(pts1, pts2):
+        u1, v1 = map(lambda x: int(round(x)), pt1)
+        u2, v2 = map(lambda x: int(round(x)), pt2)
 
         img = cv2.circle(
             img, (u1, v1), color=(0, 0, 255), radius=1
@@ -55,7 +70,7 @@ if __name__ == "__main__":
     clock = pygame.time.Clock()
     video_file = input("Enter path to video file: ")
     if video_file == "":
-        video_file = "videos/test1.mp4"
+        video_file = "videos/0000.mp4"
 
     cap = cv2.VideoCapture(video_file)
     ret, img = cap.read()
