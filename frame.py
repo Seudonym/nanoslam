@@ -38,22 +38,22 @@ class Point:
         self.idxs.append(idx)
 
 
-def match_frames(frame1: Frame, frame2: Frame):
-    K = frame1.K
+def match_frames(frame_q: Frame, frame_t: Frame):
+    K = frame_t.K
     bf = cv2.BFMatcher.create(normType=cv2.NORM_HAMMING)
 
     ret = []
     idxs1 = []
     idxs2 = []
     # Lowe's ratio test
-    matches = bf.knnMatch(frame1.des, frame2.des, k=2)
+    matches = bf.knnMatch(frame_q.des, frame_t.des, k=2)
     for m, n in matches:
         if m.distance < 0.75 * n.distance:
             idxs1.append(m.queryIdx)
             idxs2.append(m.trainIdx)
 
-            pt1 = frame1.kps[m.queryIdx].pt
-            pt2 = frame2.kps[m.trainIdx].pt
+            pt1 = frame_q.kps[m.queryIdx].pt
+            pt2 = frame_t.kps[m.trainIdx].pt
             ret.append((pt1, pt2))
 
     assert len(ret) >= 8
@@ -65,14 +65,14 @@ def match_frames(frame1: Frame, frame2: Frame):
     Rt = None
 
     # estimate the essential matrix using RANSAC
-    E, mask = cv2.findEssentialMat(ret[:, 0], ret[:, 1], K, cv2.RANSAC)
+    E, mask = cv2.findEssentialMat(ret[:, 1], ret[:, 0], K, cv2.RANSAC)
     # ret = ret[mask.ravel() == 1]
     filter = mask.ravel() == 1
     ret = ret[filter]
     idxs1 = idxs1[filter]
     idxs2 = idxs2[filter]
 
-    _, R, t, _ = cv2.recoverPose(E, ret[:, 0], ret[:, 1], K)
+    _, R, t, _ = cv2.recoverPose(E, ret[:, 1], ret[:, 0], K)
     Rt = np.concat([R, t], axis=1)
     Rt = np.vstack([Rt, [0, 0, 0, 1]])
 

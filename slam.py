@@ -8,6 +8,7 @@ import cv2
 from cv2.typing import MatLike
 import numpy as np
 import pygame
+import matplotlib.pyplot as plt
 
 from frame import Frame, Point, Map, match_frames, extract
 
@@ -31,6 +32,7 @@ def process_frame(img: MatLike):
 
     idxs1, idxs2, Rt = match_frames(frames[-1], frames[-2])
     frames[-1].pose = Rt @ frames[-2].pose
+    print(frames[-1].pose)
 
     pts1 = np.array([kp.pt for kp in frames[-1].kps])[idxs1]
     pts2 = np.array([kp.pt for kp in frames[-2].kps])[idxs2]
@@ -46,6 +48,15 @@ def process_frame(img: MatLike):
     filter = pts4d[:, 2] > 0
     pts4d = pts4d[filter]
     pts4d /= pts4d[:, 3:]
+
+    # plot
+    plt.clf()
+    poses = [np.linalg.inv(f.pose) for f in map3d.frames]
+    xs = [pose[0, 3] for pose in poses]
+    zs = [pose[2, 3] for pose in poses]
+    plt.plot(xs, zs, "-b")
+    plt.axis("equal")
+    plt.pause(0.001)
 
     for i, pt in enumerate(pts4d):
         p = Point(map3d, pt)
@@ -88,6 +99,7 @@ if __name__ == "__main__":
         ]
     )
 
+    # pygame display and video capture
     cap = cv2.VideoCapture(video_file)
     display = pygame.display.set_mode((W, H))
     while True:
@@ -104,6 +116,6 @@ if __name__ == "__main__":
             img = process_frame(img)
             paint(display, img)
             pygame.display.flip()
-            clock.tick(2)
+            clock.tick(60)
 
     pygame.quit()
