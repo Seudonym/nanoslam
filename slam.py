@@ -1,12 +1,16 @@
 #! /usr/bin/env python3
 
-import pygame
-import time
+import os
+
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
+
 import cv2
 from cv2.typing import MatLike
 import numpy as np
-from visual_odometry import VisualOdometry
 import matplotlib.pyplot as plt
+import pygame
+
+from visual_odometry import VisualOdometry
 
 
 def paint(display: pygame.Surface, img: MatLike):
@@ -47,7 +51,7 @@ def process_frame(vo: VisualOdometry, img: MatLike):
 if __name__ == "__main__":
     pygame.init()
     clock = pygame.time.Clock()
-    video_file = "nfsmw.mp4"
+    video_file = input("Enter path to video file: ")
 
     cap = cv2.VideoCapture(video_file)
     ret, frame = cap.read()

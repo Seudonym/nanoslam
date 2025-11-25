@@ -6,7 +6,8 @@ import numpy as np
 class VisualOdometry:
     def __init__(self, K: np.ndarray):
         self.orb = cv2.ORB.create(nfeatures=5000)
-        self.bf = cv2.BFMatcher.create(normType=cv2.NORM_HAMMING)
+        # self.sift = cv2.SIFT.create(nfeatures=5000)
+        self.bf = cv2.BFMatcher.create(normType=cv2.NORM_L2)
         self.K = K
         self.Kinv = np.linalg.inv(K)
         self.last = None
@@ -18,6 +19,8 @@ class VisualOdometry:
     def extract(self, img: MatLike) -> tuple[np.ndarray, np.ndarray | None]:
         # feature detection and extraction using ORB
         kps, des = self.orb.detectAndCompute(img, None)
+        # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # kps, des = self.sift.detectAndCompute(img, None)
 
         # feature matching with lowe's ratio test
         ret = []
